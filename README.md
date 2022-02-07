@@ -1,69 +1,141 @@
-## 文件同步工具
-文件同步工具是基于网宿云存储提供的API开发的存量数据同步工具，可以将用户本地的数据以原有的目录结构同步到网宿云存储。
+## wcs-rsync-tools
+wcs-rsync-tool is a tool developed on basis of Object Storage API. It is used to synchronize local data to Object Storage with the original directory structure.
+Note: wcs-rsync-hash is only applicable to the migration of stock files. For incremental files, please use Object Storage API.
 
-注：文件同步工具适用于存量文件的迁移，对于增量文件的同步请使用api上传接口
+### Applicable API Version
+It's applicable for API-V1/SDK-V1.
 
- - [下载链接](#下载链接)
- - [配置项](#配置项)
- - [命令行同步工具](#命令行同步工具)
+### Download
 
-### **下载链接**
-命令行同步工具：
+#### Command Line Tool
+[rsync-hash](https://www.wangsu.com/wos/draft/news/1638519119173/1638519119193_rsync-hash.zip)
 
-[wcs-rsync-hash](https://wcsd.chinanetcenter.com/tool/wcs-rsync-hash.zip)
+#### Visual Tool
+- windows:
 
+[websync-windows-x86](https://www.wangsu.com/wos/draft/news/1638515760290/1638515760535_websync-windows-x86.zip)
 
+[websync-windows-x64](https://www.wangsu.com/wos/draft/news/1638515911587/1638515911797_websync-windows-x64.zip)
+- Linux:
 
-注：根据操作系统的不同，选择链接下载
+[websync-linux-x86](https://www.wangsu.com/wos/draft/news/1638516578802/1638516579218_websync-linux-x86.zip)
 
-### **配置项**
-|参数|必填|描述|
+[websync-linux-x64](https://www.wangsu.com/wos/draft/news/1638516578802/websync-linux-x64.zip)
+
+Note: Download a tool correspongding to your OS.
+
+### Configurations
+
+|Parameters|Required|Description|
 |--|--|--|
-|accessKey|是|可登陆[云存储控制台](https://wcs.chinanetcenter.com/login),在“安全管理--密钥管理”中获取。|
-|secretKey|是|可登陆[云存储控制台](https://wcs.chinanetcenter.com/login),在“安全管理--密钥管理”中获取。|
-|uploadDomain<br>上传域名|是|上传文件使用的域名，可登陆[云存储控制台](https://wcs.chinanetcenter.com/login)，在“空间设置--访问域名”中获取。|
-|mgrDomain<br>管理域名|是|工具进行文件HASH值比对等操作时需要使用该管理域名，可登陆[云存储控制台](https://wcs.chinanetcenter.com/login)，在“空间设置--访问域名”中获取。|
-|syncMode<br>同步模式|是|仅命令行同步工具支持。<br>默认配置为0，支持单空间多目录的上传模式，需要填写bucket和syncDir，keyPrefix按需填写<br>配置为1，支持多空间多文件的上传模式，需要填写bucketAndDir。|
-|bucket<br>空间名称|否|文件保存到指定的空间，如images，不支持配置多个。<br>若是使用命令行同步工具，syncMode配置为0时必填。|
-|syncDir<br>同步路径|否|上传文件的本地路径，如/data。支持配置多个路径，以"\|"间隔，如D:/pic-2\|D:/rsync3。<br>若是使用命令行同步工具，syncMode配置为0时必填。<br>*注意：无论Linux系统或是Windows系统，配置本地路径请使用/分隔符；Windows系统下的路径需要带盘符（如C:/data）*|
-|keyPrefix<br>前缀|否|上传到云存储的文件添加指定的前缀，可配置多个，与syncDir的路径一一对应，默认为空。<br>例如：<br><1>keyPrefix配置为data/，上传文件1.apk，则该文件在云存储保存为data/1.apk，即云存储新增文件夹data，1.apk保存在该文件夹中；<br><2>keyPriefix配置为data，上传文件为1.apk，则该文件在云存储保存为data1.apk；<br><3>syncDir配置为D:/rsync1\|D:/rsync2\|D:/rsync3 keyPrefix配置为test1/\|test2/<br>则rsync1下的文件（文件夹）保存在云存储test1目录下，rsync2的文件（文件夹）保存在test2目录下，rsync3的文件（文件夹）保存在根目录下。若配置的keyPrefix多于syncDir，则多余的keyPrefix不生效，取前几个目录。<br>若是使用命令行同步工具，syncMode配置为0时填写。|
-|bucketAndDir<br>目标空间及本地路径|否|仅命令行同步工具支持，syncMode配置为1时必填<br>如bucket1\|D:/dir1,D:/dir2\|prefix1,prefix2/;bucket2\|D:/dir3,D:/dir4<br>注：<br><1>每个空间可以配置多个本地路径，本地路径支持文件夹和文件，文件需要带上后缀名<br><2>本地路径和前缀一一对应，前缀的用法同参数keyPrefix<br><3>空间名、本地路径和前缀使用"\|"分隔，多个本地路径或多个前缀以英文逗号","分隔<br><4>可配置多个空间、本地路径和前缀的组合，以";"分隔。|
-|threadNum<br>上传并发数|否|文件并发上传线程数。配置范围是1-100，默认值为1。<br>如果配置为５，则可同时上传５个文件。|
-|sliceThreshold<br>分片上传阈值|否|文件大小如果大于该值，则采用分片上传。单位兆（M），配置范围1M－100M，默认为4M。|
-|sliceThread<br>分片上传并发数|否|默认并发数为5，配置范围为1-100<br>如果配置为5，表示可并发上传5个分片|
-|sliceBlockSize<br>块大小|否|分片上传块的大小。取值范围:4M-1024M，且为4的倍数。默认4M。|
-|sliceChunkSize<br>片大小|否|文件分片上传时每个分片的大小，单位KB，配置范围是1024-1048576KB。<br>*注意：分片上传并发数、块大小、片大小这三个配置项只对分片上传有效。*|
-|deletable<br>同步删除|否|配置为0，本地文件删除后，云存储上的文件不删除<br>配置为1，本地文件删除后，云存储上的文件也将删除<br>*注意：该配置只对上一次同步的文件生效，对其他历史同步文件不生效，默认为0，不同步删除*|
-|maxRate<br>限速|否|上传速度限制，单位KB/s。配置为0则表示不限速。|
-|taskBeginTime<br>开始时间|否|工具开始上传文件的时间，格式为hh:mm:ss，如12:00:00。|
-|taskEndTime<br>停止时间|否|工具停止上传文件的时间，格式为hh:mm:ss，如15:00:00。|
-|isCompareHash<br>是否比对HASH上传|否|配置为0，表示不进行HASH对比上传，<br>配置为1，表示进行HASH对比上传，默认值为1。|
-|countHashThreadNum<br>Hash计算并发数|否|计算hash的线程数。配置范围是1-100，默认值为1。如果配置为10，则可同时计算10个文件hash。|
-|compareHashThreadNum<br>Hash比对并发数|否|比对本地和云存储上文件Hash值一致性，判断是否需要重新上传。<br>该参数设置比对hash的线程数。配置范围是1-100，默认值为1。<br>如果配置为10，则可同时启动10个线程比对hash。|
-|compareHashFileNum<br>Hash比对文件数|否|比对文件Hash时，一次性从云存储查询到的文件hash数量。配置范围是1-2000，默认值为100。<br>如果配置为100，则一次从服务器群查询100个文件的hash。|
-|minFileSize<br>最小文件|否|小于规定大小的文件不进行上传操作。默认值为0(不限制)。<br>如果配置为1024，则小于1024字节的文件不进行上传操作。|
-|overwrite<br>是否覆盖|否|是否覆盖云存储上同名文件，可配置为1或者0。1表示覆盖，0表示不覆盖，默认为1。|
-|isLastModifyTime<br>是否更新服务端修改时间|否|保存在云存储的lastModifyTime是否以本地文件更新时间为准，可配置为0或者1，默认为0。<br>0:表示以上传时间为lastModifyTime。<br>1:表示以本地文件修改时间为lastModifyTime。|
-|scanOnly<br>是否仅扫描文件列表|否|是否仅扫描文件列表。<br>默认为0时，正常上传文件<br>配置为1时，仅扫描文件列表，记录修改时间，不计算hash，不比对hash，不上传文件<br>备注：该项为风险配置项，在使用前请与云存储工作人员确认|
-|uploadErrorRetry<br>上传失败重试数|否|文件上传失败进行自动重试的次数。<br>配置范围是0-5，默认值为0，表示不重试。<br>如果配置为2，则文件上传失败会自动重试2次。|
+|accessKey|Yes|Available at [CDNetworks Console](https://dash.cdnetworks.com/) in “ Security Settings -> API information management -> AccessKey Management”|
+|secretKey|Yes|Available at [CDNetworks Console](https://dash.cdnetworks.com/) in “ Security Settings -> API information management -> AccessKey Management”|
+|uploadDomain|Yes|Domain name for uploading files, available at [CDNetworks Console](https://dash.cdnetworks.com/) in “Object Storage Service -> Buckets -> Overview -> Domain Names”|
+|mgrDomain|Yes|The management domain name required for file HASH values comparison by the tool, available at [CDNetworks Console](https://dash.cdnetworks.com/) in “Object Storage Service -> Buckets -> Overview -> Domain Names”|
+|syncMode|Yes|synchronization mode.Only supported by command line synchronization tool.Default at 0, supporting single-bucket and multi-directory upload mode, bucket and syncDir required, keyPrefix optional. If configured to 1, supporting multi-bucket and multi-file upload mode, bucketAndDir required.|
+|bucket|No|If not null, files will be saved in bucket specified by this parameter. And Multi-bucket is not supported yet. Note that `syncMode` should be set at 0 when using the command line tool.|
+|syncDir|No|Paths of source files. Multi-path is supported by separating paths with "\|", for example, "D:/pic-2\|D:/rsync3". Note that `syncMode` should be set at 0 when using the command line tool.|
+|keyPrefix|No|A prefix specified by this parameter can be added to the file to upload , null by default. Multi-prefix is supported, which should be consistent with paths specified by `syncDir`.<br /> For example,<br /><1> If the file to upload is "1.apk" and keyPrefix of which is set at "data/", then the file should be saved as "data/1.apk" in Object Storage, that is, a new folder “data” is added, and “1.apk” is saved in the folder;<br /><2> If the file to upload is "1.apk" and keyPrefix of which is set at "data",then the file is saved as “data1.apk” in Object Storage;<br /><3> For multi-keyPrefix, syncDir is set at "D:/rsync1\|D:/rsync2\|D:/rsync3", keyPrefix is set at "test1/\|test2/", then files (folders) under rsync1 are saved under test1 derectory in bucket, files (folders) under Rsync2 are saved under test2 derectory, and files (folders) under rsync3 are saved in root directory. If more keyPrefix is configured than syncDir, the redundant keyPrefix does not take effect.<br />Please note that `syncMode` should be set at 0 when using the command line tool.|
+|bucketAndDir|No|This field is to configure both your target bucket of Object storage and the local path where you want to sync files to Object Storage.<br />Only supported by command line tool, required when syncMode is set at 1. For example, bucket1\|D:/dir1, D:/dir2\|prefix1, prefix2/; bucket2\|D:/dir3, D:/dir4<br />Note:<br /><1> Each bucket can be configured with multiple local paths. Local paths support folders and files with suffixes;<br /><2> Local path corresponds to prefix, refer to keyPrefix for prefix use;<br /><3> Bucket name, local path and prefix are separated by "\|", multiple local paths or prefixes are separately by English comma ","<br /><4> Combination of multiple buckets, local paths and prefixes can be configured, separated by ";".<br />Note: Above example: bucket1\|D:/dir1,D:/dir2\|prefix1,prefix2/;bucket2\|D:/dir3,D:/dir4 means:<br />1. All files under your local path of D:/dir1 will be synced to bucket1 of Object Storage, and the file name is with the prefix of “prefix1”, for example, a.jpg will be synced as prefix1a.jpg.<br />2. All files under your local path of D:/dir2 will be synced to the directory of “prefix2” under bucket1 of Object Storage.<br />3. All files under your local path of D:/dir3 and D:/dir4 will be synced to the bucket2 of Object Storage.|
+|threadNum|No|Number of threads to upload. Value range 1-100, 1 by default.|
+|sliceThreshold|No|A size threshold. If file size is larger than the threshold, multipart upload will be used. Unit MB, range 1-100 MB, 4MB by default.|
+|sliceThread|No|Number of threads for multipart upload. Value range 1-100, 5 by default.|
+|sliceBlockSize|No|Size of block when multipart upload. 4MB by default. Range: 4MB-1024MB, the value should be a integer multiple of 4.|
+|sliceChunkSize|No|Size of chunk when multipart upload. Range: 1024KB-1048576KB.<br />Note: `sliceThread`, `sliceBlockSize` and `sliceChunkSize` are only valid for multipart upload.|
+|deletable|No|Deleting local file does not effect that in Object Storage when deletable is set at 0.<br />Deleting local file will do effect that in Object Storage when deletable is set at 1.<br />Note: The setting is only valid for files last update, invalid for other files historically synchronized. 0 by default.|
+|maxRate|No|Limit to upload rate, unit KB/s. If it's set at 0, then no rate limit.|
+|taskBeginTime|No|Upload begin time, format hh:mm:ss. For example 12:00:00.|
+|taskEndTime|No|Upload end time, format hh:mm:ss. For example 15:00:00.|
+|isCompareHash|No|Whether to compare hash when uploading.<br />Comparing hash if it's set at 0, otherwise not.|
+|countHashThreadNum|No|Thead numbers to compute hash. Range 1-100, 1 by default. For example, if it's set at 10, then 10 threads are processed concurrently to compute hash. |
+|compareHashThreadNum|No|Thead numbers to compare hash between loacal with Object Storage.Range 1-100, 1 by default. For example, if it's set at 10, then 10 threads are processed concurrently to compare hash.|
+|compareHashFileNum|No|Number of file HASHes queried from Object Storage at a time when comparing file HASHes. Range 1-2000, 100 by default. For example, if it's set at 100, then HASHes of 100 files can be queried form Object Storage at a time.|
+|minFileSize|No|The minimum size of a file to upload. 0 by default, which means no limit. For example, if it's set at 1024, then file size below 1024 byte are banned to upload.|
+|overwrite|No|Whether or not to overwrite a file with the same name on Object Storage, the value can be 1 or 0. 1 indicates Overwrite, 0 indicates No Overwrite, 1 by default.|
+|isLastModifyTime|No|whether to update lastModifiedTime of a file on Objcet Storage,  the value can be 0 or 1, 0 by default. 0 indicates to update, 1 indicates not.|
+|scanOnly|No|If it's set at 1, the file list will be just read without computing or comparing Hash. Note: This is a risk parameter, please confirm with the Object Storage staff before set the parameter if it's required.|
+|uploadErrorRetry|No|Times of automatic retry for failed uploads. Range 0-5, 0 by default. For example, if it's set at 2, it can be retried twice when the upload fail.|
 
-### **命令行同步工具**
-#### **使用建议**
+### **Command Line Tool**
+#### **Requirements**
 
-1. 预先安装java，JDK要求1.6以上版本。
-2. 配置文件与工具放在相同路径
+1. Pre-install Java, JDK 1.6 or above
+2. Put the config file and tool in same path
 
-#### **使用方法**
+#### **How to use**
+1. Open the directory where wcs-rsync-hash tool is located, such as Windows directory “F:\wcs-rsync” or Linux directory “/home/tool/wcs-rsync”
+2. Configure conf.json
+3. Start service
 
-1. 打开wcs-rsync-hash工具所在目录，如windows目录F:\wcs-rsync或者linux目录/home/tool/wcs-rsync
-2. 配置conf.json
-3. 启动服务
-<br>windows下，可在空白处按住Shift键，点击右键，选择“在此处打开命令窗口(W)”
-<br>执行命令：java -jar wcs-rsync-hash-xxx.jar conf.json
-<br>*文件同步结束，若存在同步失败的文件，再次执行该命令，会重新同步上一次失败的文件*
-4. 列出上传失败的文件
-<br>执行命令：java -jar wcs-rsync-hash-xxx.jar -listfailed conf.json
-<br>输出结果保存到工具目录下的log文件中
-5. 强制重新上传所有文件：执行命令：java -jar wcs-rsync-hash-xxx.jar -igsync conf.json
+   In Windows, hold Shift in a blank area and right click, select “Open Command Window Here (W)”
+Run the command: java -jar wcs-rsync-hash-xxx.jar conf.json
+After the synchronization, run the command again to re-sync the files with failed synchronization.
+
+4. List files with failed synchronization
+
+   Run the command: java -jar wcs-rsync-hash-xxx.jar -listfailed conf.json. Output is saved to the log file in the tool directory
+
+5. Force re-upload of all files: Run the command: java -jar wcs-rsync-hash-xxx.jar -igsync conf.json
 
 
+### Visual synchronization tool
+
+#### Window
+1. Start the service
+
+   Run startup.bat to pop up TOMCAT window
+2. The first time the service is successfully opened, the browser will automatically open and enter the operation interface.
+
+   After the service is successfully started, the TOMCAT window can be closed.
+   
+3. During service startup, remote operations can be performed using a browser by opening the browser and entering IP: Port to go to the operation interface
+
+   Note: default Port at 8091*
+
+4. Select “Configure Upload” to set basic information and advanced parameters as required
+
+5. Click “Upload” to upload
+
+   Stop the upload if configuration needs to be changed during uploading
+
+6. View the upload progress through “Progress Query”, and failed files can be re-uploaded
+
+7. Close the service
+
+   Run shutdown.bat to close the service
+#### Linux
+1. Start the service
+
+   Run startup.bat to pop up TOMCAT window
+2. After service startup, remote operations can be performed using a browser by opening the browser and entering IP: Port to go to the operation interface.
+
+   Note: default Port at 8091*
+
+3. Select “Configure Upload” to set basic information and advanced parameters as required
+
+4. Click “Upload” to upload
+
+   Stop the upload if configuration needs to be changed during uploading
+
+5. View the upload progress through “Progress Query”, and failed files can be re-uploaded
+
+6. Close the service
+
+   Run shutdown.bat to close the service
+
+Note: Visual synchronization tools provide local configuration files… \service\wcsrSynchashWeb\conf.json, allowing users to customize whether configuration items are editable on the interface, “readonly: true” indicates that the configuration item is read-only. “readonly: false” indicates that the configuration item can be edited on the interface; configuration items that cannot be edited on the interface can be modified for their value in the configuration file.
+```
+If only accessKey, secretKey, bucket, syncDir and other basic configurations are excepted to be edited on the interface, set “readonly” to “false”, and “true” for those that are not expected to be edited on the interface
+{
+    "accessKey":{"value":"","readonly":false},
+    "secretKey":{"value":"","readonly":false},
+    "bucket":{"value":"","readonly":false},
+    "syncDir":{"value":"","readonly":false},
+    "uploadDomain":{"value":"","readonly":true},
+    "mgrDomain":{"value":"","readonly":true},
+    "keyPrefix":{"value":"","readonly":true},
+    “threadNum":{"value":"1","readonly":true},
+    ...
+
+}
+```
